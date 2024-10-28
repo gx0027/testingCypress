@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Notes App</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Notes App</h1>
+        
+        <form id="note-form">
+            <input type="text" id="note-title" placeholder="Title" required maxlength="50" />
+            <input type="text" id="note-content" placeholder="Content" required />
+            <button type="submit" id="submit-button">Add Note</button>
+        </form>
+        
+        <div id="controls">
+            <input type="text" id="search-input" placeholder="Search notes..." />
+            <button id="delete-all">Delete All</button>
+            <button id="sort-by-date">Sort by Date</button>
+        </div>
+        
+        <div id="notes"></div>
+        <div class="error" id="error-message"></div>
+    </div>
+
+    <script>
+        const noteForm = document.getElementById('note-form');
+        const notesContainer = document.getElementById('notes');
+        const deleteAllButton = document.getElementById('delete-all');
+        const searchInput = document.getElementById('search-input');
+        const sortByDateButton = document.getElementById('sort-by-date');
+        const errorMessage = document.getElementById('error-message');
+        const submitButton = document.getElementById('submit-button');
+
+        let notes = JSON.parse(localStorage.getItem('notes')) || [];
+        let editingIndex = -1;
+
+        displayNotes(notes);
+
+        noteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('note-title').value.trim();
+            const content = document.getElementById('note-content').value.trim();
+
+            if (title.length > 50) {
+                errorMessage.textContent = "Title must be 50 characters or less.";
+                return;
+            }
+
+            if (!title) {
+                errorMessage.textContent = "Title is required.";
+                return;
+            }
+            if (!content) {
+                errorMessage.textContent = "Content is required.";
+                return;
+            }
+
+            if (editingIndex === -1) {
+                const note = { title, content, date: new Date().toLocaleString() };
+                notes.push(note);
+            } else {
+                notes[editingIndex] = { title, content, date: new Date().toLocaleString() };
+                submitButton.textContent = "Add Note";
+                editingIndex = -1;
+            }
+
+            localStorage.setItem('notes', JSON.stringify(notes));
+            displayNotes(notes);
+            noteForm.reset();
+            errorMessage.textContent = "";
+        });
+
+        function displayNotes(noteList) {
+            notesContainer.innerHTML = '';
+            noteList.forEach((note, index) => {
+                const noteElement = document.createElement('div');
+                noteElement.classList.add('note');
+                noteElement.innerHTML = `
+                    <div>
+                        <strong>${note.title}</strong>: ${note.content}
+                        <small>(${note.date})</small>
+                    </div>
+                    <button class="edit-btn" data-index="${index}" data-cy="edit-btn">Edit</button>
+                    <button class="delete-btn" data-cy="delete-btn">Delete</button>
+                `;
+                notesContainer.appendChild(noteElement);
+
+                noteElement.querySelector('.delete-btn').addEventListener('click', function() {
+                    notes = notes.filter(n => n !== note);
+                    localStorage.setItem('notes', JSON.stringify(notes));
+                    displayNotes(notes);
+                });
+
+                noteElement.querySelector('.edit-btn').addEventListener('click', function() {
+                    document.getElementById('note-title').value = note.title;
+                    document.getElementById('note-content').value = note.content;
+                    editingIndex = index;
+                    submitButton.textContent = "Change Note";
+                });
+            });
+        }
+
+        deleteAllButton.addEventListener('click', () => {
+            notes = [];
+            localStorage.removeItem('notes');
+            displayNotes(notes);
+        });
+
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase();
+            const filteredNotes = notes.filter(note => note.title.toLowerCase().includes(query));
+            displayNotes(filteredNotes);
+        });
+
+        sortByDateButton.addEventListener('click', () => {
+            notes.sort((a, b) => new Date(b.date) - new Date(a.date));
+            displayNotes(notes);
+        });
+    </script>
+</body>
+</html>
